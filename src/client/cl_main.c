@@ -38,9 +38,14 @@
 
 #include <limits.h>
 
+#include "libmumblelink.h"
+
 #include "../sys/sys_local.h"
 #include "../sys/sys_loadlib.h"
 #include "../renderercommon/tr_public.h"
+
+cvar_t *cl_useMumble;
+cvar_t *cl_mumbleScale;
 
 #ifdef USE_RENDERER_DLOPEN
 cvar_t *cl_renderer;
@@ -125,6 +130,41 @@ refexport_t re;
 #ifdef USE_RENDERER_DLOPEN
 static void *rendererLib = NULL;
 #endif
+
+static
+void CL_UpdateMumble(void)
+{
+	vec3_t pos, forward, up;
+	float scale = cl_mumbleScale->value;
+	float tmp;
+	
+	if(!cl_useMumble->integer)
+		return;
+
+	// !!! FIXME: not sure if this is even close to correct.
+	AngleVectors( cl.snap.ps.viewangles, forward, NULL, up);
+
+	pos[0] = cl.snap.ps.origin[0] * scale;
+	pos[1] = cl.snap.ps.origin[2] * scale;
+	pos[2] = cl.snap.ps.origin[1] * scale;
+
+	tmp = forward[1];
+	forward[1] = forward[2];
+	forward[2] = tmp;
+
+	tmp = up[1];
+	up[1] = up[2];
+	up[2] = tmp;
+
+	if(cl_useMumble->integer > 1) {
+		fprintf(stderr, "%f %f %f, %f %f %f, %f %f %f\n",
+			pos[0], pos[1], pos[2],
+			forward[0], forward[1], forward[2],
+			up[0], up[1], up[2]);
+	}
+
+	mumble_update_coordinates(pos, forward, up);
+}
 
 ping_t cl_pinglist[MAX_PINGREQUESTS];
 
@@ -630,6 +670,11 @@ void CL_Disconnect(qboolean showMainMenu)
 		Cvar_Set("cl_downloadName", "");
 
 		Com_UpdateVarsClean(CLEAR_STATUS);
+	}
+
+    if (cl_useMumble->integer && mumble_islinked()) {
+        Com_Printf("Mumble: Unlinking from Mumble application\n");
+		mumble_unlink();
 	}
 
 	CL_DemoCleanUp();
@@ -2239,6 +2284,8 @@ void CL_Frame(int msec)
 	// update the sound
 	S_Update();
 
+    CL_UpdateMumble();
+
 	// advance local effects for next frame
 	SCR_RunCinematic();
 
@@ -2853,6 +2900,9 @@ void CL_Init(void)
 
 	Cvar_Get("password", "", CVAR_USERINFO);
 	Cvar_Get("cg_predictItems", "1", CVAR_ARCHIVE);
+
+	cl_useMumble = Cvar_Get ("cl_useMumble", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	cl_mumbleScale = Cvar_Get ("cl_mumbleScale", "0.0254", CVAR_ARCHIVE);
 
 	Cvar_Get("cg_autoactivate", "1", CVAR_ARCHIVE);
 

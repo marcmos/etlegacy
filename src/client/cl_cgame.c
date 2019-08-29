@@ -36,6 +36,8 @@
 #include "client.h"
 #include "../botlib/botlib.h"
 
+#include "libmumblelink.h"
+
 extern botlib_export_t *botlib_export;
 
 void Key_GetBindingBuf(int keynum, char *buf, int buflen);
@@ -1355,6 +1357,11 @@ void CL_FirstSnapshot(void)
  */
 void CL_SetCGameTime(void)
 {
+    if ((cl_useMumble->integer) && !mumble_islinked()) {
+        int ret = mumble_link(CLIENT_WINDOW_TITLE);
+        Com_Printf("Mumble: Linking to Mumble application %s\n", ret==0?"ok":"failed");
+    }
+
 	// getting a valid frame message ends the connection process
 	if (cls.state != CA_ACTIVE)
 	{

@@ -435,6 +435,9 @@ extern cvar_t *cl_defaultProfile;
 
 extern cvar_t *cl_consoleKeys;
 
+extern cvar_t  *cl_useMumble;
+extern cvar_t  *cl_mumbleScale;
+
 //=================================================
 
 // cl_main
